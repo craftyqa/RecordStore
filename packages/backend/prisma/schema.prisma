@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Item {
+  id               String   @id @default(uuid())
+  title            String
+  quantity         Int      @default(0)
+  price            Decimal  @db.Decimal(10, 2)
+  media_condition  String?
+  sleeve_condition String?
+  comments         String?
+  discogs_id          String?  @unique
+  discogs_listing_id  String?
+  discogs_sync_status String   @default("never")
+  discogs_sync_error  String?
+  discogs_synced_at   DateTime?
+  version             Int      @default(1)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  @@map("items")
+}

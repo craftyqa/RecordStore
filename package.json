@@ -1,0 +1,16 @@
+{
+  "name": "record-store",
+  "version": "0.0.1",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev:backend": "pnpm --filter backend dev",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test:smoke": "pnpm --filter e2e test:smoke",
+    "test": "pnpm --filter e2e test"
+  }
+}
