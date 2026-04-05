@@ -3,7 +3,17 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { cn } from '@/lib/utils'
 
-const CONDITIONS = ['', 'M', 'NM', 'VG+', 'VG', 'G+', 'G', 'F', 'P'] as const
+const CONDITIONS = [
+  '',
+  'Mint (M)',
+  'Near Mint (NM or M-)',
+  'Very Good Plus (VG+)',
+  'Very Good (VG)',
+  'Good Plus (G+)',
+  'Good (G)',
+  'Fair (F)',
+  'Poor (P)',
+] as const
 
 export const itemFormSchema = z.object({
   title: z.string().min(1, 'Title is required'),

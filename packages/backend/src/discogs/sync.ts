@@ -1,18 +1,18 @@
 import * as client from './client'
 import * as repo from '../items/repository'
 
-// Maps our condition values to Discogs API condition strings.
-// Discogs docs: https://www.discogs.com/developers#page:marketplace,header:marketplace-new-listing
-const CONDITION_MAP: Record<string, string> = {
-  M: 'Mint (M)',
-  NM: 'Near Mint (NM or M-)',
-  'VG+': 'Very Good Plus (VG+)',
-  VG: 'Very Good (VG)',
-  'G+': 'Good Plus (G+)',
-  G: 'Good (G)',
-  F: 'Fair (F)',
-  P: 'Poor (P)',
-}
+// Valid Discogs marketplace condition strings.
+// Stored as-is in the DB and sent directly to the API.
+const VALID_CONDITIONS = new Set([
+  'Mint (M)',
+  'Near Mint (NM or M-)',
+  'Very Good Plus (VG+)',
+  'Very Good (VG)',
+  'Good Plus (G+)',
+  'Good (G)',
+  'Fair (F)',
+  'Poor (P)',
+])
 
 function parseReleaseId(discogsId: string): number {
   const numeric = discogsId.replace(/^r/i, '')
@@ -21,11 +21,12 @@ function parseReleaseId(discogsId: string): number {
   return id
 }
 
-function mapCondition(value: string | null, field: string): string {
+function validateCondition(value: string | null, field: string): string {
   if (!value) throw new Error(`${field} is required to sync to Discogs`)
-  const mapped = CONDITION_MAP[value]
-  if (!mapped) throw new Error(`Unrecognised ${field}: "${value}". Valid values: ${Object.keys(CONDITION_MAP).join(', ')}`)
-  return mapped
+  if (!VALID_CONDITIONS.has(value)) {
+    throw new Error(`Unrecognised ${field}: "${value}". Valid values: ${[...VALID_CONDITIONS].join(', ')}`)
+  }
+  return value
 }
 
 export async function syncItemToDiscogs(id: string): Promise<void> {
@@ -35,10 +36,10 @@ export async function syncItemToDiscogs(id: string): Promise<void> {
 
   const payload: client.ListingPayload = {
     release_id: parseReleaseId(item.discogs_id),
-    condition: mapCondition(item.media_condition, 'media_condition'),
+    condition: validateCondition(item.media_condition, 'media_condition'),
     price: parseFloat(item.price.toString()),
     status: 'For Sale',
-    sleeve_condition: item.sleeve_condition ? CONDITION_MAP[item.sleeve_condition] : undefined,
+    sleeve_condition: item.sleeve_condition ? validateCondition(item.sleeve_condition, 'sleeve_condition') : undefined,
     comments: item.comments ?? undefined,
   }
 
