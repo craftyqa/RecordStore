@@ -5,6 +5,10 @@ import * as repo from './repository'
 import { createItemSchema, updateItemSchema, bulkPriceSchema } from './schema'
 import { syncItemToDiscogs } from '../discogs/sync'
 
+function isDuplicateKeyError(err: unknown): boolean {
+  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002'
+}
+
 const router = Router()
 
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
@@ -45,7 +49,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
       })
       return
     }
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+    if (isDuplicateKeyError(err)) {
       res.status(409).json({ code: 'CONFLICT', message: 'An item with that discogs_id already exists' })
       return
     }
@@ -99,7 +103,7 @@ router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => 
       })
       return
     }
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+    if (isDuplicateKeyError(err)) {
       res.status(409).json({ code: 'CONFLICT', message: 'An item with that discogs_id already exists' })
       return
     }

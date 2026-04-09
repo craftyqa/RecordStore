@@ -1,6 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest'
-import { setupServer } from 'msw/node'
-import { http, HttpResponse } from 'msw'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import * as repo from './repository'
 import { syncItemToDiscogs } from '../discogs/sync'
 import { makeItem } from '../test/factory'
@@ -9,17 +7,27 @@ process.env.DISCOGS_TOKEN = 'test-token'
 
 const LISTINGS_URL = 'https://api.discogs.com/marketplace/listings'
 
-// Default stub: Discogs create listing succeeds immediately
-const server = setupServer(
-  http.post(LISTINGS_URL, () =>
-    HttpResponse.json({ listing_id: 999, resource_url: `${LISTINGS_URL}/999` }, { status: 201 }),
-  ),
-  http.post(`${LISTINGS_URL}/:listingId`, () => new HttpResponse(null, { status: 204 })),
-)
+function mockFetchSuccess() {
+  return vi.spyOn(global, 'fetch').mockResolvedValue(
+    new Response(
+      JSON.stringify({ listing_id: 999, resource_url: `${LISTINGS_URL}/999` }),
+      { status: 201, headers: { 'Content-Type': 'application/json' } },
+    ),
+  )
+}
 
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
-afterEach(() => server.resetHandlers())
-afterAll(() => server.close())
+function mockFetchError(status: number, message: string) {
+  return vi.spyOn(global, 'fetch').mockResolvedValue(
+    new Response(
+      JSON.stringify({ message }),
+      { status, headers: { 'Content-Type': 'application/json' } },
+    ),
+  )
+}
+
+beforeEach(() => {
+  vi.restoreAllMocks()
+})
 
 // ---------------------------------------------------------------------------
 // Test A — bulk price update while sync is in flight
@@ -35,16 +43,14 @@ describe('Test A: bulk price update concurrent with sync', () => {
       }),
     )
 
-    // Simulate sync taking a moment by delaying the Discogs response
-    server.use(
-      http.post(LISTINGS_URL, async () => {
-        await new Promise((r) => setTimeout(r, 50))
-        return HttpResponse.json(
-          { listing_id: 999, resource_url: `${LISTINGS_URL}/999` },
-          { status: 201 },
-        )
-      }),
-    )
+    // Simulate sync taking a moment
+    vi.spyOn(global, 'fetch').mockImplementation(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+      return new Response(
+        JSON.stringify({ listing_id: 999, resource_url: `${LISTINGS_URL}/999` }),
+        { status: 201, headers: { 'Content-Type': 'application/json' } },
+      )
+    })
 
     // Run sync and bulk price update concurrently
     await Promise.all([
@@ -73,33 +79,26 @@ describe('Test B: two concurrent PATCH requests with same version', () => {
     const item = await repo.insert(makeItem({ title: 'Original Title' }))
     expect(item.version).toBe(1)
 
-    // Both requests read version=1 at the same time and try to update
     const [countA, countB] = await Promise.all([
       repo.updateWithVersion(item.id, 1, { title: 'Update from A' }),
       repo.updateWithVersion(item.id, 1, { title: 'Update from B' }),
     ])
 
-    // Exactly one should win
     expect(countA + countB).toBe(1)
 
     const final = await repo.getById(item.id)
-    // Winner's version incremented
     expect(final!.version).toBe(2)
-    // Title is one of the two updates (DB decides the winner)
     expect(['Update from A', 'Update from B']).toContain(final!.title)
   })
 
   it('loser receives a 0 count indicating conflict', async () => {
     const item = await repo.insert(makeItem())
 
-    // First update wins and bumps version to 2
     await repo.updateWithVersion(item.id, 1, { title: 'First writer' })
 
-    // Second attempt with stale version=1
     const staleCount = await repo.updateWithVersion(item.id, 1, { title: 'Late writer' })
     expect(staleCount).toBe(0)
 
-    // DB still reflects the first writer
     const final = await repo.getById(item.id)
     expect(final!.title).toBe('First writer')
     expect(final!.version).toBe(2)
@@ -118,12 +117,7 @@ describe('Test C: external API error mid-sync and recovery', () => {
       }),
     )
 
-    // Discogs returns a terminal error
-    server.use(
-      http.post(LISTINGS_URL, () =>
-        HttpResponse.json({ message: 'Unauthorized' }, { status: 401 }),
-      ),
-    )
+    mockFetchError(401, 'Unauthorized')
 
     await expect(syncItemToDiscogs(item.id)).rejects.toThrow('Unauthorized')
 
@@ -142,18 +136,15 @@ describe('Test C: external API error mid-sync and recovery', () => {
     )
 
     // First sync fails
-    server.use(
-      http.post(LISTINGS_URL, () =>
-        HttpResponse.json({ message: 'Service Unavailable' }, { status: 503 }),
-      ),
-    )
+    mockFetchError(503, 'Service Unavailable')
     await expect(syncItemToDiscogs(item.id)).rejects.toThrow()
 
     const errored = await repo.getById(item.id)
     expect(errored!.discogs_sync_status).toBe('error')
 
-    // Reset to success handler and re-sync
-    server.resetHandlers()
+    // Re-sync succeeds
+    vi.restoreAllMocks()
+    mockFetchSuccess()
     await syncItemToDiscogs(item.id)
 
     const recovered = await repo.getById(item.id)
