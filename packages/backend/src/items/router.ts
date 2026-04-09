@@ -113,12 +113,14 @@ router.post('/:id/sync/discogs', async (req: Request, res: Response, next: NextF
     const item = await repo.getById(req.params.id)
     res.json({ data: item })
   } catch (err) {
-    // Sync errors are persisted to the item — return the updated item so the UI can show the error state
+    // Sync errors are persisted to the item — return the updated item so the UI can show the error state.
+    // Preserve the original error message in case the DB fetch also fails.
+    const originalMessage = err instanceof Error ? err.message : 'Sync failed'
     const item = await repo.getById(req.params.id).catch(() => null)
     if (item?.discogs_sync_status === 'error') {
       res.status(422).json({
         code: 'SYNC_ERROR',
-        message: item.discogs_sync_error ?? 'Sync failed',
+        message: item.discogs_sync_error ?? originalMessage,
         data: item,
       })
       return

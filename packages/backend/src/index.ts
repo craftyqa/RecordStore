@@ -5,7 +5,7 @@ import itemsRouter from './items/router'
 const app = express()
 const port = process.env.PORT ?? 3001
 
-app.use(cors())
+app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') ?? 'http://localhost:3000' }))
 app.use(express.json())
 
 app.get('/health', (_req, res) => {

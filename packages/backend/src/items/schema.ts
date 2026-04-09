@@ -7,11 +7,11 @@ export const createItemSchema = z.object({
   media_condition: z.string().optional(),
   sleeve_condition: z.string().optional(),
   comments: z.string().optional(),
-  discogs_id: z.string().optional(),
+  discogs_id: z.string().regex(/^r?\d+$/i, 'Must be a numeric ID or rNNN format (e.g. r388 or 388)').optional(),
 })
 
 export const updateItemSchema = createItemSchema.partial().extend({
-  version: z.number().int().positive('version is required for updates'),
+  version: z.number().int().min(1, 'version must be a positive integer'),
 })
 
 export const bulkPriceSchema = z.object({
