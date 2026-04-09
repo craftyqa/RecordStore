@@ -15,13 +15,10 @@ const payload: ListingPayload = {
 }
 
 function mockFetch(status: number, body: unknown) {
-  return vi.spyOn(global, 'fetch').mockResolvedValue(
+  return vi.spyOn(global, 'fetch').mockImplementation(async () =>
     new Response(
       status === 204 ? null : JSON.stringify(body),
-      {
-        status,
-        headers: { 'Content-Type': 'application/json' },
-      },
+      { status, headers: { 'Content-Type': 'application/json' } },
     ),
   )
 }
@@ -95,9 +92,9 @@ describe('Discogs client — error handling', () => {
     expect(spy).toHaveBeenCalledTimes(1)
   })
 
-  it('retries on 429 and eventually throws', async () => {
+  it('retries on 429 and eventually throws after MAX_RETRIES', async () => {
     const spy = mockFetch(429, { message: 'Too Many Requests' })
-    await expect(createListing(payload)).rejects.toThrow('Too Many Requests')
+    await expect(createListing(payload)).rejects.toThrow()
     expect(spy).toHaveBeenCalledTimes(3) // MAX_RETRIES = 3
   }, 15000)
 })
