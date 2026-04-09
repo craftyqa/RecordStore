@@ -66,7 +66,7 @@ async function discogsRequest<T>(path: string, method: string, body?: unknown): 
     if (res.ok) {
       console.log(`[discogs] ${method} ${path} → ${res.status}`)
       if (res.status === 204) return undefined as unknown as T
-      return res.json()
+      return res.json() as Promise<T>
     }
 
     const data = await res.json().catch(() => ({}))
