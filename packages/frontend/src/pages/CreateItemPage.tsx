@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { api } from '@/lib/api'
-import { ItemForm, type ItemFormValues } from '@/components/ItemForm'
+import { ItemForm } from '@/components/ItemForm'
+import { type ItemFormValues } from '@/lib/itemSchema'
 
 export function CreateItemPage() {
   const navigate = useNavigate()

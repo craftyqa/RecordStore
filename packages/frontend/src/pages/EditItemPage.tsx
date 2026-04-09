@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '@/lib/api'
-import { ItemForm, type ItemFormValues } from '@/components/ItemForm'
+import { ItemForm } from '@/components/ItemForm'
+import { type ItemFormValues } from '@/lib/itemSchema'
 import type { Item } from '@/types/item'
 
 export function EditItemPage() {
