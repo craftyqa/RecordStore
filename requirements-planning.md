@@ -506,7 +506,7 @@ Phases are ordered so each unlocks the next. Deliverables are intentionally **sm
 
 
 
-- One item can be pushed or updated on Discogs in dev; error state visible in UI or API  
+- One item  be pushed or updated ocann Discogs in dev; error state visible in UI or API  
 
 
 

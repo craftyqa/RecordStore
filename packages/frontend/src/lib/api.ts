@@ -1,7 +1,9 @@
 import type { DetailResponse, ListResponse } from '@/types/item'
 
+const API_BASE = import.meta.env.VITE_API_URL ?? '/api'
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`/api${path}`, init)
+  const res = await fetch(`${API_BASE}${path}`, init)
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     throw Object.assign(new Error(body.message ?? 'Request failed'), { status: res.status, body })

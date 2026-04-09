@@ -7,7 +7,12 @@ export const itemFormSchema = z.object({
   media_condition: z.string().optional(),
   sleeve_condition: z.string().optional(),
   comments: z.string().optional(),
-  discogs_id: z.string().optional(),
+  // Transform empty string → undefined so the backend regex validator never
+  // sees "" as a value (backend requires r?\d+ format when a value is present).
+  discogs_id: z
+    .string()
+    .optional()
+    .transform((val) => (val === '' ? undefined : val)),
 })
 
 export type ItemFormValues = z.infer<typeof itemFormSchema>
