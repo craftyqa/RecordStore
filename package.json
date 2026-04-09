@@ -11,6 +11,8 @@
     "lint": "pnpm -r --if-present lint",
     "typecheck": "pnpm -r --if-present typecheck",
     "test:smoke": "pnpm --filter e2e test:smoke",
+    "test:contract": "pnpm --filter backend test:contract",
+    "test:integration": "pnpm --filter backend test:integration",
     "test": "pnpm --filter e2e test"
   }
 }

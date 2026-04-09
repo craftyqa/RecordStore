@@ -78,8 +78,17 @@ router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => 
       res.status(404).json({ code: 'NOT_FOUND', message: 'Item not found' })
       return
     }
-    const body = updateItemSchema.parse(req.body)
-    const item = await repo.update(req.params.id, body)
+    const { version, ...fields } = updateItemSchema.parse(req.body)
+    const count = await repo.updateWithVersion(req.params.id, version, fields)
+    if (count === 0) {
+      console.warn(`[concurrency] version conflict on item ${req.params.id}: client=${version} db=${existing.version}`)
+      res.status(409).json({
+        code: 'VERSION_CONFLICT',
+        message: 'Item was modified by another request. Reload and try again.',
+      })
+      return
+    }
+    const item = await repo.getById(req.params.id)
     res.json({ data: item })
   } catch (err) {
     if (err instanceof ZodError) {

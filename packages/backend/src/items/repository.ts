@@ -22,9 +22,21 @@ export function update(id: string, data: Prisma.ItemUpdateInput) {
   return db.item.update({ where: { id }, data })
 }
 
+export async function updateWithVersion(
+  id: string,
+  version: number,
+  data: Prisma.ItemUpdateInput,
+) {
+  const result = await db.item.updateMany({
+    where: { id, version },
+    data: { ...data, version: { increment: 1 } },
+  })
+  return result.count // 0 = version mismatch or not found
+}
+
 export function bulkUpdatePrice(ids: string[], price: number) {
   return db.item.updateMany({
     where: { id: { in: ids } },
-    data: { price },
+    data: { price, version: { increment: 1 } },
   })
 }

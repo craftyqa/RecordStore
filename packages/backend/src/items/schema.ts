@@ -10,7 +10,9 @@ export const createItemSchema = z.object({
   discogs_id: z.string().optional(),
 })
 
-export const updateItemSchema = createItemSchema.partial()
+export const updateItemSchema = createItemSchema.partial().extend({
+  version: z.number().int().positive('version is required for updates'),
+})
 
 export const bulkPriceSchema = z.object({
   ids: z.array(z.string().uuid()).min(1, 'At least one item is required'),

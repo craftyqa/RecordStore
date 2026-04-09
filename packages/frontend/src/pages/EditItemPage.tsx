@@ -10,6 +10,7 @@ export function EditItemPage() {
   const [item, setItem] = useState<Item | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -21,8 +22,18 @@ export function EditItemPage() {
   }, [id])
 
   async function handleSubmit(values: ItemFormValues) {
-    await api.items.update(id!, values)
-    navigate(`/items/${id}`)
+    setSubmitError(null)
+    try {
+      await api.items.update(id!, { ...values, version: item!.version })
+      navigate(`/items/${id}`)
+    } catch (err) {
+      const e = err as { status?: number; message?: string }
+      if (e.status === 409) {
+        setSubmitError('This item was modified by someone else. Reload the page to get the latest version.')
+      } else {
+        setSubmitError(e.message ?? 'Failed to save changes')
+      }
+    }
   }
 
   if (loading) return <div className="p-8 text-muted-foreground">Loading...</div>
@@ -56,6 +67,11 @@ export function EditItemPage() {
         ← Back to item
       </button>
       <h1 className="text-2xl font-bold text-foreground mb-6">Edit Item</h1>
+      {submitError && (
+        <div className="mb-4 rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {submitError}
+        </div>
+      )}
       <div className="rounded-md border border-border p-6">
         <ItemForm onSubmit={handleSubmit} submitLabel="Save Changes" defaultValues={defaultValues} />
       </div>

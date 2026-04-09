@@ -1,6 +1,9 @@
 const BASE_URL = 'https://api.discogs.com'
 const USER_AGENT = 'RecordStoreApp/1.0'
 
+const MAX_RETRIES = 3
+const BASE_DELAY_MS = 500
+
 export interface ListingPayload {
   release_id: number
   condition: string
@@ -29,22 +32,57 @@ function authHeaders() {
   }
 }
 
-async function discogsRequest<T>(path: string, method: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers: authHeaders(),
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  })
+function isRetryable(status: number): boolean {
+  return status === 429 || status >= 500
+}
 
-  if (!res.ok) {
+function backoffMs(attempt: number): number {
+  // Exponential backoff with jitter: 500ms, 1000ms, 2000ms ± up to 20%
+  const base = BASE_DELAY_MS * Math.pow(2, attempt)
+  const jitter = base * 0.2 * Math.random()
+  return Math.round(base + jitter)
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function discogsRequest<T>(path: string, method: string, body?: unknown): Promise<T> {
+  let lastError: Error & { status?: number } = new Error('Unknown error')
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      const delay = backoffMs(attempt - 1)
+      console.log(`[discogs] retry ${attempt}/${MAX_RETRIES - 1} for ${method} ${path} — waiting ${delay}ms`)
+      await sleep(delay)
+    }
+
+    const res = await fetch(`${BASE_URL}${path}`, {
+      method,
+      headers: authHeaders(),
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    })
+
+    if (res.ok) {
+      console.log(`[discogs] ${method} ${path} → ${res.status}`)
+      if (res.status === 204) return undefined as T
+      return res.json()
+    }
+
     const data = await res.json().catch(() => ({}))
     const message = (data as { message?: string }).message ?? `Discogs error ${res.status}`
-    throw Object.assign(new Error(message), { status: res.status })
+    lastError = Object.assign(new Error(message), { status: res.status })
+
+    if (!isRetryable(res.status)) {
+      console.error(`[discogs] ${method} ${path} → ${res.status} (terminal): ${message}`)
+      throw lastError
+    }
+
+    console.warn(`[discogs] ${method} ${path} → ${res.status} (retryable): ${message}`)
   }
 
-  // 204 No Content — no body to parse
-  if (res.status === 204) return undefined as T
-  return res.json()
+  console.error(`[discogs] ${method} ${path} — all ${MAX_RETRIES} attempts failed`)
+  throw lastError
 }
 
 export function createListing(payload: ListingPayload): Promise<CreateListingResponse> {

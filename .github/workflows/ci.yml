@@ -52,3 +52,52 @@ jobs:
 
       - name: Run smoke tests
         run: pnpm test:smoke
+
+  full:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: recordstore
+          POSTGRES_PASSWORD: recordstore
+          POSTGRES_DB: recordstore
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://recordstore:recordstore@localhost:5432/recordstore
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations
+        run: pnpm --filter backend exec prisma migrate deploy
+
+      - name: Run contract tests
+        run: pnpm --filter backend test:contract
+
+      - name: Run integration tests
+        run: pnpm --filter backend test:integration
+
+      - name: Install Playwright browsers
+        run: pnpm --filter e2e exec playwright install --with-deps chromium
+
+      - name: Run full Playwright suite
+        run: pnpm test

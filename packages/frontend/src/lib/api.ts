@@ -25,7 +25,7 @@ export const api = {
       request<DetailResponse>(`/items/${id}`),
     create: (data: unknown) =>
       request<DetailResponse>('/items', json('POST', data)),
-    update: (id: string, data: unknown) =>
+    update: (id: string, data: unknown & { version: number }) =>
       request<DetailResponse>(`/items/${id}`, json('PATCH', data)),
     bulkUpdatePrice: (ids: string[], price: number) =>
       request<{ count: number }>('/items/prices/bulk', json('PATCH', { ids, price })),
