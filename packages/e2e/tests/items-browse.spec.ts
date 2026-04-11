@@ -1,13 +1,7 @@
 /**
  * Items browse tests — inventory list and detail page @full
- *
- * Each test creates its own item via the API immediately before it runs
- * (inside beforeEach) so every invocation gets a fresh, uniquely titled
- * record. Using Date.now() inside beforeEach — rather than at module
- * scope — prevents strict-mode violations when the same describe block
- * runs multiple tests that each create an item.
  */
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures'
 
 const API = 'http://localhost:3001'
 
@@ -28,40 +22,39 @@ test.describe('Inventory list @full', () => {
       },
     })
     expect(res.ok()).toBeTruthy()
-    const body = await res.json()
-    itemId = body.data.id
+    itemId = (await res.json()).data.id
   })
 
-  test('shows heading and table column headers', async ({ page }) => {
-    await page.goto('/items')
-    await expect(page.getByRole('heading', { name: 'Inventory' })).toBeVisible()
-    await expect(page.getByRole('columnheader', { name: 'Title' })).toBeVisible()
-    await expect(page.getByRole('columnheader', { name: 'Media' })).toBeVisible()
-    await expect(page.getByRole('columnheader', { name: 'Sleeve' })).toBeVisible()
-    await expect(page.getByRole('columnheader', { name: 'Price' })).toBeVisible()
-    await expect(page.getByRole('columnheader', { name: 'Qty' })).toBeVisible()
+  test('shows heading and table column headers', async ({ inventoryPage }) => {
+    await inventoryPage.goto()
+    await expect(inventoryPage.heading).toBeVisible()
+    await expect(inventoryPage.columnHeader('Title')).toBeVisible()
+    await expect(inventoryPage.columnHeader('Media')).toBeVisible()
+    await expect(inventoryPage.columnHeader('Sleeve')).toBeVisible()
+    await expect(inventoryPage.columnHeader('Price')).toBeVisible()
+    await expect(inventoryPage.columnHeader('Qty')).toBeVisible()
   })
 
-  test('lists the test item in the table', async ({ page }) => {
-    await page.goto('/items')
-    await expect(page.getByRole('cell', { name: title }).first()).toBeVisible()
+  test('lists the test item in the table', async ({ inventoryPage }) => {
+    await inventoryPage.goto()
+    await expect(inventoryPage.titleCell(title)).toBeVisible()
   })
 
-  test('clicking the title cell navigates to the detail page', async ({ page }) => {
-    await page.goto('/items')
-    await page.getByRole('cell', { name: title }).first().click()
+  test('clicking the title cell navigates to the detail page', async ({ inventoryPage, page }) => {
+    await inventoryPage.goto()
+    await inventoryPage.clickItem(title)
     await expect(page).toHaveURL(`/items/${itemId}`)
   })
 
-  test('shows page 1 and Previous button disabled on load', async ({ page }) => {
-    await page.goto('/items')
-    await expect(page.getByText('Page 1')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Previous' })).toBeDisabled()
+  test('shows page 1 and Previous button disabled on load', async ({ inventoryPage }) => {
+    await inventoryPage.goto()
+    await expect(inventoryPage.pageIndicator()).toBeVisible()
+    await expect(inventoryPage.previousButton).toBeDisabled()
   })
 
-  test('Add Item button is present on the list page', async ({ page }) => {
-    await page.goto('/items')
-    await expect(page.getByRole('button', { name: '+ Add Item' })).toBeVisible()
+  test('Add Item button is present on the list page', async ({ inventoryPage }) => {
+    await inventoryPage.goto()
+    await expect(inventoryPage.addItemButton).toBeVisible()
   })
 })
 
@@ -71,7 +64,7 @@ test.describe('Item detail page @full', () => {
   let discogsId: string
 
   test.beforeEach(async ({ request }) => {
-    // Use per-test timestamp so discogs_id is unique across every beforeEach call
+    // Per-test timestamp keeps discogs_id unique across every beforeEach call.
     const ts = Date.now()
     title = `Detail-${ts} Blue Train`
     discogsId = `r${ts}`
@@ -88,46 +81,45 @@ test.describe('Item detail page @full', () => {
       },
     })
     expect(res.ok()).toBeTruthy()
-    const body = await res.json()
-    itemId = body.data.id
+    itemId = (await res.json()).data.id
   })
 
-  test('shows the item title as a heading', async ({ page }) => {
-    await page.goto(`/items/${itemId}`)
-    await expect(page.getByRole('heading', { name: title })).toBeVisible()
+  test('shows the item title as a heading', async ({ detailPage }) => {
+    await detailPage.goto(itemId)
+    await expect(detailPage.heading(title)).toBeVisible()
   })
 
-  test('shows price, quantity, and condition fields', async ({ page }) => {
-    await page.goto(`/items/${itemId}`)
-    await expect(page.getByText('$24.99')).toBeVisible()
-    await expect(page.getByText('Near Mint (NM or M-)')).toBeVisible()
-    await expect(page.getByText('Very Good Plus (VG+)')).toBeVisible()
+  test('shows price, quantity, and condition fields', async ({ detailPage }) => {
+    await detailPage.goto(itemId)
+    await expect(detailPage.field('$24.99')).toBeVisible()
+    await expect(detailPage.field('Near Mint (NM or M-)')).toBeVisible()
+    await expect(detailPage.field('Very Good Plus (VG+)')).toBeVisible()
   })
 
-  test('shows comments when present', async ({ page }) => {
-    await page.goto(`/items/${itemId}`)
-    await expect(page.getByText('Blue Note original')).toBeVisible()
+  test('shows comments when present', async ({ detailPage }) => {
+    await detailPage.goto(itemId)
+    await expect(detailPage.field('Blue Note original')).toBeVisible()
   })
 
-  test('shows Discogs Release ID when set', async ({ page }) => {
-    await page.goto(`/items/${itemId}`)
-    await expect(page.getByText(discogsId)).toBeVisible()
+  test('shows Discogs Release ID when set', async ({ detailPage }) => {
+    await detailPage.goto(itemId)
+    await expect(detailPage.field(discogsId)).toBeVisible()
   })
 
-  test('Edit button is visible on the detail page', async ({ page }) => {
-    await page.goto(`/items/${itemId}`)
-    await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible()
+  test('Edit button is visible on the detail page', async ({ detailPage }) => {
+    await detailPage.goto(itemId)
+    await expect(detailPage.editButton).toBeVisible()
   })
 
-  test('← Back to inventory returns to the list', async ({ page }) => {
-    await page.goto(`/items/${itemId}`)
-    await page.getByText('← Back to inventory').click()
+  test('← Back to inventory returns to the list', async ({ detailPage, inventoryPage, page }) => {
+    await detailPage.goto(itemId)
+    await detailPage.clickBackToInventory()
     await expect(page).toHaveURL(/\/items(\?.*)?$/)
-    await expect(page.getByRole('heading', { name: 'Inventory' })).toBeVisible()
+    await expect(inventoryPage.heading).toBeVisible()
   })
 
-  test('shows an error for an unknown item id', async ({ page }) => {
-    await page.goto('/items/00000000-0000-0000-0000-000000000000')
-    await expect(page.getByText('Item not found')).toBeVisible()
+  test('shows an error for an unknown item id', async ({ detailPage }) => {
+    await detailPage.goto('00000000-0000-0000-0000-000000000000')
+    await expect(detailPage.notFoundError()).toBeVisible()
   })
 })

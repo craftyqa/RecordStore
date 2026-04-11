@@ -1,11 +1,7 @@
 /**
  * Edit item tests — pre-population, saving, and conflict handling @full
- *
- * Each test creates a fresh item via the API in beforeEach. Timestamps are
- * generated inside beforeEach (not at module scope) so that each test gets
- * a uniquely named item, avoiding strict-mode violations.
  */
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures'
 
 const API = 'http://localhost:3001'
 
@@ -26,60 +22,69 @@ test.describe('Edit item @full', () => {
       },
     })
     expect(res.ok()).toBeTruthy()
-    const body = await res.json()
-    itemId = body.data.id
+    itemId = (await res.json()).data.id
   })
 
-  test('Edit button on detail page navigates to the edit form', async ({ page }) => {
-    await page.goto(`/items/${itemId}`)
-    await page.getByRole('button', { name: 'Edit' }).click()
+  test('Edit button on detail page navigates to the edit form', async ({
+    detailPage,
+    editPage,
+    page,
+  }) => {
+    await detailPage.goto(itemId)
+    await detailPage.clickEdit()
     await expect(page).toHaveURL(`/items/${itemId}/edit`)
-    await expect(page.getByRole('heading', { name: 'Edit Item' })).toBeVisible()
+    await expect(editPage.heading).toBeVisible()
   })
 
-  test('edit form is pre-populated with the existing item values', async ({ page }) => {
-    await page.goto(`/items/${itemId}/edit`)
-    await expect(page.getByLabel('Title *')).toHaveValue(originalTitle)
-    await expect(page.getByLabel('Price *')).toHaveValue('15')
-    await expect(page.getByLabel('Quantity')).toHaveValue('2')
-    await expect(page.getByLabel('Media Condition')).toHaveValue('Very Good (VG)')
-    await expect(page.getByLabel('Sleeve Condition')).toHaveValue('Good Plus (G+)')
-    await expect(page.getByLabel('Comments')).toHaveValue('Minor scuffs')
+  test('edit form is pre-populated with the existing item values', async ({ editPage }) => {
+    await editPage.goto(itemId)
+    await expect(editPage.form.titleInput).toHaveValue(originalTitle)
+    await expect(editPage.form.priceInput).toHaveValue('15')
+    await expect(editPage.form.quantityInput).toHaveValue('2')
+    await expect(editPage.form.mediaConditionSelect).toHaveValue('Very Good (VG)')
+    await expect(editPage.form.sleeveConditionSelect).toHaveValue('Good Plus (G+)')
+    await expect(editPage.form.commentsInput).toHaveValue('Minor scuffs')
   })
 
-  test('saving changes updates the item and redirects to the detail page', async ({ page }) => {
+  test('saving changes updates the item and redirects to the detail page', async ({
+    editPage,
+    detailPage,
+    page,
+  }) => {
     const updatedTitle = `Edit-${Date.now()} Updated Title`
-    await page.goto(`/items/${itemId}/edit`)
-    await page.getByLabel('Title *').fill(updatedTitle)
-    await page.getByLabel('Price *').fill('28.50')
-    await page.getByLabel('Media Condition').selectOption('Near Mint (NM or M-)')
-    await page.getByRole('button', { name: 'Save Changes' }).click()
-
+    await editPage.goto(itemId)
+    await editPage.fillAndSubmit({
+      title: updatedTitle,
+      price: '28.50',
+      media_condition: 'Near Mint (NM or M-)',
+    })
     await expect(page).toHaveURL(`/items/${itemId}`)
-    await expect(page.getByRole('heading', { name: updatedTitle })).toBeVisible()
-    await expect(page.getByText('$28.50')).toBeVisible()
-    await expect(page.getByText('Near Mint (NM or M-)')).toBeVisible()
+    await expect(detailPage.heading(updatedTitle)).toBeVisible()
+    await expect(detailPage.field('$28.50')).toBeVisible()
+    await expect(detailPage.field('Near Mint (NM or M-)')).toBeVisible()
   })
 
-  test('← Back to item returns to the detail page without saving', async ({ page }) => {
-    await page.goto(`/items/${itemId}/edit`)
-    // Dirty the form — should not be saved
-    await page.getByLabel('Title *').fill('Should not be saved')
-    await page.getByText('← Back to item').click()
+  test('← Back to item returns to the detail page without saving', async ({
+    editPage,
+    detailPage,
+    page,
+  }) => {
+    await editPage.goto(itemId)
+    await editPage.fill({ title: 'Should not be saved' })
+    await editPage.clickBackToItem()
     await expect(page).toHaveURL(`/items/${itemId}`)
-    // Original title is still shown
-    await expect(page.getByRole('heading', { name: originalTitle })).toBeVisible()
+    await expect(detailPage.heading(originalTitle)).toBeVisible()
   })
 
   test('shows a conflict error when the item was modified externally after page load', async ({
-    page,
+    editPage,
     request,
   }) => {
-    await page.goto(`/items/${itemId}/edit`)
+    await editPage.goto(itemId)
     // Wait for the form to finish loading with version=1 before triggering the race.
     // Without this, the concurrent PATCH could complete before the page fetch, causing
     // the form to initialise with version=2 and submit without a conflict.
-    await expect(page.getByLabel('Title *')).toHaveValue(originalTitle)
+    await expect(editPage.form.titleInput).toHaveValue(originalTitle)
 
     // Simulate a concurrent update by another actor — increments the version
     const patchRes = await request.patch(`${API}/items/${itemId}`, {
@@ -88,12 +93,9 @@ test.describe('Edit item @full', () => {
     expect(patchRes.ok()).toBeTruthy()
 
     // Submit the stale edit form — it still holds version 1 from page load
-    await page.getByLabel('Title *').fill('Stale edit attempt')
-    await page.getByRole('button', { name: 'Save Changes' }).click()
+    await editPage.fill({ title: 'Stale edit attempt' })
+    await editPage.submit()
 
-    // The 409 response should surface as a user-visible conflict message
-    await expect(
-      page.getByText('This item was modified by someone else', { exact: false }),
-    ).toBeVisible()
+    await expect(editPage.conflictError).toBeVisible()
   })
 })

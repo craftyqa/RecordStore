@@ -1,92 +1,91 @@
 /**
  * Create item tests — form validation and successful creation @full
- *
- * Tests navigate through the UI to verify the create flow end-to-end.
- * Created items are permanent (no delete endpoint) so titles include a
- * run-unique timestamp to avoid cross-run pollution.
  */
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures'
 
+// Module-level RUN gives each suffix (Rumours, Thriller, Nevermind) a unique
+// title across runs while keeping the tests within this file collision-free.
 const RUN = Date.now()
 
 test.describe('Create item @full', () => {
-  test('+ Add Item button navigates to the create form', async ({ page }) => {
-    await page.goto('/items')
-    await page.getByRole('button', { name: '+ Add Item' }).click()
+  test('+ Add Item button navigates to the create form', async ({ inventoryPage, createPage, page }) => {
+    await inventoryPage.goto()
+    await inventoryPage.clickAddItem()
     await expect(page).toHaveURL('/items/new')
-    await expect(page.getByRole('heading', { name: 'Add Item' })).toBeVisible()
+    await expect(createPage.heading).toBeVisible()
   })
 
-  test('← Back to inventory returns without creating', async ({ page }) => {
-    await page.goto('/items/new')
-    await page.getByText('← Back to inventory').click()
+  test('← Back to inventory returns without creating', async ({ createPage, inventoryPage, page }) => {
+    await createPage.goto()
+    await createPage.clickBackToInventory()
     await expect(page).toHaveURL(/\/items(\?.*)?$/)
-    await expect(page.getByRole('heading', { name: 'Inventory' })).toBeVisible()
+    await expect(inventoryPage.heading).toBeVisible()
   })
 
-  test('shows Title is required when title is blank', async ({ page }) => {
-    await page.goto('/items/new')
-    // Leave title empty, set a valid price so only title errors
-    await page.getByLabel('Price *').fill('9.99')
-    await page.getByRole('button', { name: 'Add Item' }).click()
-    await expect(page.getByText('Title is required')).toBeVisible()
+  test('shows Title is required when title is blank', async ({ createPage }) => {
+    await createPage.goto()
+    await createPage.fill({ price: '9.99' })
+    await createPage.submit()
+    await expect(createPage.form.titleError).toBeVisible()
   })
 
-  test('shows price validation error when price is zero', async ({ page }) => {
-    await page.goto('/items/new')
-    await page.getByLabel('Title *').fill('Test')
-    await page.getByLabel('Price *').fill('0')
-    await page.getByRole('button', { name: 'Add Item' }).click()
-    await expect(page.getByText('Price must be positive')).toBeVisible()
+  test('shows price validation error when price is zero', async ({ createPage }) => {
+    await createPage.goto()
+    await createPage.fill({ title: 'Test', price: '0' })
+    await createPage.submit()
+    await expect(createPage.form.priceError).toBeVisible()
   })
 
-  test('shows both errors when title and price are missing', async ({ page }) => {
-    await page.goto('/items/new')
-    await page.getByRole('button', { name: 'Add Item' }).click()
-    await expect(page.getByText('Title is required')).toBeVisible()
-    await expect(page.getByText('Price must be positive')).toBeVisible()
+  test('shows both errors when title and price are missing', async ({ createPage }) => {
+    await createPage.goto()
+    await createPage.submit()
+    await expect(createPage.form.titleError).toBeVisible()
+    await expect(createPage.form.priceError).toBeVisible()
   })
 
-  test('successful create redirects to the new item detail page', async ({ page }) => {
+  test('successful create redirects to the new item detail page', async ({
+    createPage,
+    detailPage,
+    page,
+  }) => {
     const title = `Create-${RUN} Rumours`
-    await page.goto('/items/new')
-    await page.getByLabel('Title *').fill(title)
-    await page.getByLabel('Price *').fill('19.99')
-    await page.getByLabel('Quantity').fill('2')
-    await page.getByLabel('Media Condition').selectOption('Very Good Plus (VG+)')
-    await page.getByLabel('Sleeve Condition').selectOption('Very Good (VG)')
-    await page.getByRole('button', { name: 'Add Item' }).click()
-
+    await createPage.goto()
+    await createPage.fillAndSubmit({
+      title,
+      price: '19.99',
+      quantity: '2',
+      media_condition: 'Very Good Plus (VG+)',
+      sleeve_condition: 'Very Good (VG)',
+    })
     await expect(page).toHaveURL(/\/items\/[0-9a-f-]{36}$/)
-    await expect(page.getByRole('heading', { name: title })).toBeVisible()
+    await expect(detailPage.heading(title)).toBeVisible()
   })
 
-  test('created item shows the submitted field values on the detail page', async ({ page }) => {
+  test('created item shows the submitted field values on the detail page', async ({
+    createPage,
+    detailPage,
+  }) => {
     const title = `Create-${RUN} Thriller`
-    await page.goto('/items/new')
-    await page.getByLabel('Title *').fill(title)
-    await page.getByLabel('Price *').fill('14.99')
-    await page.getByLabel('Quantity').fill('5')
-    await page.getByLabel('Media Condition').selectOption('Near Mint (NM or M-)')
-    await page.getByLabel('Comments').fill('Still sealed')
-    await page.getByRole('button', { name: 'Add Item' }).click()
-
-    await expect(page.getByRole('heading', { name: title })).toBeVisible()
-    await expect(page.getByText('$14.99')).toBeVisible()
-    await expect(page.getByText('Near Mint (NM or M-)')).toBeVisible()
-    await expect(page.getByText('Still sealed')).toBeVisible()
+    await createPage.goto()
+    await createPage.fillAndSubmit({
+      title,
+      price: '14.99',
+      quantity: '5',
+      media_condition: 'Near Mint (NM or M-)',
+      comments: 'Still sealed',
+    })
+    await expect(detailPage.heading(title)).toBeVisible()
+    await expect(detailPage.field('$14.99')).toBeVisible()
+    await expect(detailPage.field('Near Mint (NM or M-)')).toBeVisible()
+    await expect(detailPage.field('Still sealed')).toBeVisible()
   })
 
-  test('created item appears in the inventory list', async ({ page }) => {
+  test('created item appears in the inventory list', async ({ createPage, inventoryPage, page }) => {
     const title = `Create-${RUN} Nevermind`
-    await page.goto('/items/new')
-    await page.getByLabel('Title *').fill(title)
-    await page.getByLabel('Price *').fill('22.00')
-    await page.getByRole('button', { name: 'Add Item' }).click()
-
-    // Redirected to detail — now go back to list
+    await createPage.goto()
+    await createPage.fillAndSubmit({ title, price: '22.00' })
     await expect(page).toHaveURL(/\/items\/[0-9a-f-]{36}$/)
-    await page.goto('/items')
-    await expect(page.getByRole('cell', { name: title })).toBeVisible()
+    await inventoryPage.goto()
+    await expect(inventoryPage.titleCell(title)).toBeVisible()
   })
 })
