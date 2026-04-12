@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '@/lib/api'
 import { ConditionBadge } from '@/components/ConditionBadge'
@@ -18,14 +18,16 @@ export function ItemsPage() {
 
   const [searchParams, setSearchParams] = useSearchParams()
   const page = Math.max(1, parseInt(searchParams.get('page') ?? '1'))
+  const searchParam = searchParams.get('search') ?? ''
+  const [searchInput, setSearchInput] = useState(searchParam)
   const navigate = useNavigate()
   const bulkInputRef = useRef<HTMLInputElement>(null)
 
-  function loadItems() {
+  const loadItems = useCallback(() => {
     setLoading(true)
     setError(null)
     api.items
-      .list(page, LIMIT)
+      .list(page, LIMIT, searchParam || undefined)
       .then(({ data }) => {
         setItems(data)
         setHasMore(data.length === LIMIT)
@@ -33,11 +35,28 @@ export function ItemsPage() {
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false))
-  }
+  }, [page, searchParam]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     loadItems()
-  }, [page]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loadItems])
+
+  // Debounce search input → URL param (resets to page 1)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev)
+        if (searchInput) {
+          next.set('search', searchInput)
+        } else {
+          next.delete('search')
+        }
+        next.set('page', '1')
+        return next
+      })
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchInput]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
@@ -83,6 +102,16 @@ export function ItemsPage() {
         >
           + Add Item
         </button>
+      </div>
+
+      <div className="mb-4">
+        <input
+          type="search"
+          placeholder="Search by title..."
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          className="w-full max-w-sm rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
       </div>
 
       {selectedIds.size > 0 && (
@@ -133,6 +162,7 @@ export function ItemsPage() {
               <th className="px-4 py-3 text-left font-medium">Media</th>
               <th className="px-4 py-3 text-left font-medium">Sleeve</th>
               <th className="px-4 py-3 text-left font-medium">Discogs</th>
+              <th className="px-4 py-3 text-left font-medium">Shopify</th>
               <th className="px-4 py-3 text-right font-medium">Price</th>
               <th className="px-4 py-3 text-right font-medium">Qty</th>
             </tr>
@@ -140,13 +170,13 @@ export function ItemsPage() {
           <tbody className="divide-y divide-border">
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                   Loading...
                 </td>
               </tr>
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                   No items found.
                 </td>
               </tr>
@@ -178,6 +208,13 @@ export function ItemsPage() {
                   </td>
                   <td className="px-4 py-3">
                     {item.discogs_sync_status === 'listed' && (
+                      <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
+                        Synced
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {item.shopify_sync_status === 'listed' && (
                       <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
                         Synced
                       </span>

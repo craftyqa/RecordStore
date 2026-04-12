@@ -1,12 +1,13 @@
 import { Prisma } from '@prisma/client'
 import db from '../db'
 
-export function list(page = 1, limit = 20) {
+export function list(page = 1, limit = 20, search?: string) {
   const skip = (page - 1) * limit
   return db.item.findMany({
     skip,
     take: limit,
     orderBy: { created_at: 'desc' },
+    where: search ? { title: { contains: search, mode: 'insensitive' } } : undefined,
   })
 }
 

@@ -4,6 +4,7 @@ import { ZodError } from 'zod'
 import * as repo from './repository'
 import { createItemSchema, updateItemSchema, bulkPriceSchema } from './schema'
 import { syncItemToDiscogs } from '../discogs/sync'
+import { syncItemToShopify } from '../shopify/sync'
 
 function isDuplicateKeyError(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002'
@@ -15,7 +16,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string) || 1)
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20))
-    const items = await repo.list(page, limit)
+    const search = (req.query.search as string | undefined)?.trim() || undefined
+    const items = await repo.list(page, limit, search)
     res.json({ data: items, page, limit })
   } catch (err) {
     next(err)
@@ -125,6 +127,27 @@ router.post('/:id/sync/discogs', async (req: Request, res: Response, next: NextF
       res.status(422).json({
         code: 'SYNC_ERROR',
         message: item.discogs_sync_error ?? originalMessage,
+        data: item,
+      })
+      return
+    }
+    next(err)
+  }
+})
+
+router.post('/:id/sync/shopify', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await syncItemToShopify(req.params.id)
+    const item = await repo.getById(req.params.id)
+    res.json({ data: item })
+  } catch (err) {
+    // Sync errors are persisted to the item — return the updated item so the UI can show the error state.
+    const originalMessage = err instanceof Error ? err.message : 'Sync failed'
+    const item = await repo.getById(req.params.id).catch(() => null)
+    if (item?.shopify_sync_status === 'error') {
+      res.status(422).json({
+        code: 'SYNC_ERROR',
+        message: item.shopify_sync_error ?? originalMessage,
         data: item,
       })
       return

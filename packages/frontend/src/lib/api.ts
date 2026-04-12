@@ -21,8 +21,11 @@ function json(method: string, body: unknown): RequestInit {
 
 export const api = {
   items: {
-    list: (page = 1, limit = 20) =>
-      request<ListResponse>(`/items?page=${page}&limit=${limit}`),
+    list: (page = 1, limit = 20, search?: string) => {
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+      if (search) params.set('search', search)
+      return request<ListResponse>(`/items?${params}`)
+    },
     get: (id: string) =>
       request<DetailResponse>(`/items/${id}`),
     create: (data: unknown) =>
@@ -33,5 +36,7 @@ export const api = {
       request<{ count: number }>('/items/prices/bulk', json('PATCH', { ids, price })),
     syncToDiscogs: (id: string) =>
       request<DetailResponse>(`/items/${id}/sync/discogs`, { method: 'POST' }),
+    syncToShopify: (id: string) =>
+      request<DetailResponse>(`/items/${id}/sync/shopify`, { method: 'POST' }),
   },
 }

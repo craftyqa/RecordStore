@@ -20,6 +20,11 @@ model Item {
   discogs_sync_status String   @default("never")
   discogs_sync_error  String?
   discogs_synced_at   DateTime?
+  shopify_product_id  String?
+  shopify_variant_id  String?
+  shopify_sync_status String   @default("never")
+  shopify_sync_error  String?
+  shopify_synced_at   DateTime?
   version             Int      @default(1)
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt

@@ -76,6 +76,69 @@ function DiscogsStatus({ item, onSync }: { item: Item; onSync: () => void }) {
   )
 }
 
+function ShopifyStatus({ item, onSync }: { item: Item; onSync: () => void }) {
+  const [syncing, setSyncing] = useState(false)
+
+  async function handleSync() {
+    setSyncing(true)
+    try {
+      await api.items.syncToShopify(item.id)
+    } catch {
+      // error state is persisted on the item and shown via onSync refresh
+    } finally {
+      setSyncing(false)
+      onSync()
+    }
+  }
+
+  const statusBadge = {
+    never: <span className="text-xs text-muted-foreground">Not synced</span>,
+    listed: (
+      <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
+        Listed on Shopify
+      </span>
+    ),
+    error: (
+      <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">
+        Sync error
+      </span>
+    ),
+  }[item.shopify_sync_status]
+
+  return (
+    <div className="mt-4 rounded-md border border-border p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-foreground mb-1">Shopify Store</p>
+          <div className="flex items-center gap-2">
+            {statusBadge}
+            {item.shopify_synced_at && (
+              <span className="text-xs text-muted-foreground">
+                Last synced {new Date(item.shopify_synced_at).toLocaleString()}
+              </span>
+            )}
+          </div>
+          {item.shopify_sync_status === 'error' && item.shopify_sync_error && (
+            <p className="mt-1 text-xs text-destructive">{item.shopify_sync_error}</p>
+          )}
+        </div>
+        <button
+          onClick={handleSync}
+          disabled={syncing || item.quantity < 1}
+          title={item.quantity < 1 ? 'Item must have quantity of at least 1 to sync' : undefined}
+          className={`rounded-md px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed ${
+            item.shopify_sync_status === 'listed'
+              ? 'bg-green-600 text-white'
+              : 'bg-primary text-primary-foreground'
+          }`}
+        >
+          {syncing ? 'Syncing...' : item.shopify_sync_status === 'listed' ? 'Synced to Shopify' : 'Sync to Shopify'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function ItemDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -162,6 +225,7 @@ export function ItemDetailPage() {
       </div>
 
       <DiscogsStatus item={item} onSync={loadItem} />
+      <ShopifyStatus item={item} onSync={loadItem} />
     </div>
   )
 }
