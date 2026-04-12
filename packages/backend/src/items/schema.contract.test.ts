@@ -71,7 +71,8 @@ describe('updateItemSchema', () => {
   })
 
   it('rejects an update without version', () => {
-    const { version: _v, ...withoutVersion } = valid
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { version: _version, ...withoutVersion } = valid
     expect(() => updateItemSchema.parse(withoutVersion)).toThrow()
   })
 
