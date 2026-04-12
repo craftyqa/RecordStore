@@ -61,11 +61,15 @@ function DiscogsStatus({ item, onSync }: { item: Item; onSync: () => void }) {
         </div>
         <button
           onClick={handleSync}
-          disabled={syncing || !item.discogs_id}
-          title={!item.discogs_id ? 'Set a Discogs release ID before syncing' : undefined}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={syncing || !item.discogs_id || item.quantity < 1}
+          title={!item.discogs_id ? 'Set a Discogs release ID before syncing' : item.quantity < 1 ? 'Item must have quantity of at least 1 to sync' : undefined}
+          className={`rounded-md px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed ${
+            item.discogs_sync_status === 'listed'
+              ? 'bg-green-600 text-white'
+              : 'bg-primary text-primary-foreground'
+          }`}
         >
-          {syncing ? 'Syncing...' : item.discogs_sync_status === 'listed' ? 'Re-sync' : 'Sync to Discogs'}
+          {syncing ? 'Syncing...' : item.discogs_sync_status === 'listed' ? 'Synced to Discogs' : 'Sync to Discogs'}
         </button>
       </div>
     </div>

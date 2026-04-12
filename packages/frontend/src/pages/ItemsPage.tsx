@@ -132,6 +132,7 @@ export function ItemsPage() {
               <th className="px-4 py-3 text-left font-medium">Title</th>
               <th className="px-4 py-3 text-left font-medium">Media</th>
               <th className="px-4 py-3 text-left font-medium">Sleeve</th>
+              <th className="px-4 py-3 text-left font-medium">Discogs</th>
               <th className="px-4 py-3 text-right font-medium">Price</th>
               <th className="px-4 py-3 text-right font-medium">Qty</th>
             </tr>
@@ -139,13 +140,13 @@ export function ItemsPage() {
           <tbody className="divide-y divide-border">
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                   Loading...
                 </td>
               </tr>
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                   No items found.
                 </td>
               </tr>
@@ -174,6 +175,13 @@ export function ItemsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <ConditionBadge value={item.sleeve_condition} />
+                  </td>
+                  <td className="px-4 py-3">
+                    {item.discogs_sync_status === 'listed' && (
+                      <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
+                        Synced
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right text-foreground">
                     ${parseFloat(item.price).toFixed(2)}
