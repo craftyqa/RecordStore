@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//mnt/c/source/portfolio/**)",
+      "Bash(pnpm --filter backend vitest run src/discogs/discogs.contract.test.ts)",
+      "Bash(pnpm vitest:*)"
+    ]
+  }
+}

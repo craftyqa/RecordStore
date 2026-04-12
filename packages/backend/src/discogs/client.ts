@@ -1,14 +1,14 @@
 const BASE_URL = 'https://api.discogs.com'
 const USER_AGENT = 'RecordStoreApp/1.0'
 
-const MAX_RETRIES = 3
+export const MAX_RETRIES = 3
 const BASE_DELAY_MS = 500
 
 export interface ListingPayload {
   release_id: number
   condition: string
   price: number
-  status: string
+  status: 'For Sale' | 'Draft'
   sleeve_condition?: string
   comments?: string
 }
