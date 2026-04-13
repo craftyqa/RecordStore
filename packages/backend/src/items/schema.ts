@@ -8,6 +8,7 @@ export const createItemSchema = z.object({
   sleeve_condition: z.string().optional(),
   comments: z.string().optional(),
   discogs_id: z.string().regex(/^r?\d+$/i, 'Must be a numeric ID or rNNN format (e.g. r388 or 388)').optional(),
+  image_path: z.string().optional(),
 })
 
 export const updateItemSchema = createItemSchema.partial().extend({

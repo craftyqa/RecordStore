@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express'
 import cors from 'cors'
+import path from 'path'
 import itemsRouter from './items/router'
 
 const app = express()
@@ -7,6 +8,7 @@ const port = process.env.PORT ?? 3001
 
 app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') ?? 'http://localhost:3000' }))
 app.use(express.json())
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')))
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' })

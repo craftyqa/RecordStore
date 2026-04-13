@@ -7,7 +7,14 @@ export function CreateItemPage() {
   const navigate = useNavigate()
 
   async function handleSubmit(values: ItemFormValues) {
-    const { data } = await api.items.create(values)
+    const { syncToDiscogs, syncToShopify, ...itemData } = values
+    const { data } = await api.items.create(itemData)
+
+    const syncs: Promise<unknown>[] = []
+    if (syncToDiscogs) syncs.push(api.items.syncToDiscogs(data.id).catch(() => {}))
+    if (syncToShopify) syncs.push(api.items.syncToShopify(data.id).catch(() => {}))
+    await Promise.all(syncs)
+
     navigate(`/items/${data.id}`)
   }
 
@@ -21,7 +28,12 @@ export function CreateItemPage() {
       </button>
       <h1 className="text-2xl font-bold text-foreground mb-6">Add Item</h1>
       <div className="rounded-md border border-border p-6">
-        <ItemForm onSubmit={handleSubmit} submitLabel="Add Item" />
+        <ItemForm
+          onSubmit={handleSubmit}
+          submitLabel="Add Item"
+          showSyncOptions
+          defaultValues={{ syncToDiscogs: true, syncToShopify: true }}
+        />
       </div>
     </div>
   )

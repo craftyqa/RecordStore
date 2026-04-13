@@ -13,6 +13,9 @@ export const itemFormSchema = z.object({
     .string()
     .optional()
     .transform((val) => (val === '' ? undefined : val)),
+  image_path: z.string().optional(),
+  syncToDiscogs: z.boolean().optional().default(false),
+  syncToShopify: z.boolean().optional().default(false),
 })
 
 export type ItemFormValues = z.infer<typeof itemFormSchema>

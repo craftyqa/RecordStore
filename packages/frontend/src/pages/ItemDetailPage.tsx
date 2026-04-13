@@ -43,7 +43,7 @@ function DiscogsStatus({ item, onSync }: { item: Item; onSync: () => void }) {
   }[item.discogs_sync_status]
 
   return (
-    <div className="mt-6 rounded-md border border-border p-4">
+    <div data-testid="discogs-panel" className="mt-6 rounded-md border border-border p-4">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-foreground mb-1">Discogs Marketplace</p>

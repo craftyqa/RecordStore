@@ -1,16 +1,50 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import { Prisma } from '@prisma/client'
 import { ZodError } from 'zod'
+import path from 'path'
+import fs from 'fs'
+import multer from 'multer'
 import * as repo from './repository'
 import { createItemSchema, updateItemSchema, bulkPriceSchema } from './schema'
 import { syncItemToDiscogs } from '../discogs/sync'
 import { syncItemToShopify } from '../shopify/sync'
+
+const UPLOADS_DIR = path.join(process.cwd(), 'uploads')
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => {
+      fs.mkdirSync(UPLOADS_DIR, { recursive: true })
+      cb(null, UPLOADS_DIR)
+    },
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname)
+      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`)
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true)
+    } else {
+      cb(new Error('Only image files are allowed'))
+    }
+  },
+})
 
 function isDuplicateKeyError(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002'
 }
 
 const router = Router()
+
+router.post('/images', upload.single('image'), (req: Request, res: Response) => {
+  if (!req.file) {
+    res.status(400).json({ code: 'NO_FILE', message: 'No image file provided' })
+    return
+  }
+  res.status(201).json({ path: `/uploads/${req.file.filename}` })
+})
 
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {

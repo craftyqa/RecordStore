@@ -6,6 +6,7 @@ export interface Item {
   media_condition: string | null
   sleeve_condition: string | null
   comments: string | null
+  image_path: string | null
   discogs_id: string | null
   discogs_listing_id: string | null
   discogs_sync_status: 'never' | 'listed' | 'error'

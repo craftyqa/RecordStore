@@ -21,9 +21,10 @@ export class DiscogsSyncPanel {
   readonly syncingButton: Locator
 
   constructor(readonly page: Page) {
-    this.notSynced = page.getByText('Not synced')
-    this.listedOnDiscogs = page.getByText('Listed on Discogs')
-    this.syncError = page.getByText('Sync error')
+    const panel = page.getByTestId('discogs-panel')
+    this.notSynced = panel.getByText('Not synced')
+    this.listedOnDiscogs = panel.getByText('Listed on Discogs')
+    this.syncError = panel.getByText('Sync error')
     this.syncButton = page.getByRole('button', { name: /sync to discogs|re-sync/i })
     this.syncingButton = page.getByRole('button', { name: /syncing/i })
   }

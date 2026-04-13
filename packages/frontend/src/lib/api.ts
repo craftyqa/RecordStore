@@ -38,5 +38,10 @@ export const api = {
       request<DetailResponse>(`/items/${id}/sync/discogs`, { method: 'POST' }),
     syncToShopify: (id: string) =>
       request<DetailResponse>(`/items/${id}/sync/shopify`, { method: 'POST' }),
+    uploadImage: (file: File) => {
+      const formData = new FormData()
+      formData.append('image', file)
+      return request<{ path: string }>('/items/images', { method: 'POST', body: formData })
+    },
   },
 }

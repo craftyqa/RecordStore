@@ -20,6 +20,7 @@ model Item {
   discogs_sync_status String   @default("never")
   discogs_sync_error  String?
   discogs_synced_at   DateTime?
+  image_path          String?
   shopify_product_id  String?
   shopify_variant_id  String?
   shopify_sync_status String   @default("never")
