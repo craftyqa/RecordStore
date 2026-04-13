@@ -33,7 +33,7 @@ export class ItemFormPage {
   constructor(readonly page: Page) {
     this.titleInput = page.getByLabel('Title *')
     this.priceInput = page.getByLabel('Price *')
-    this.quantityInput = page.getByLabel('Quantity')
+    this.quantityInput = page.locator('#quantity')
     this.mediaConditionSelect = page.getByLabel('Media Condition')
     this.sleeveConditionSelect = page.getByLabel('Sleeve Condition')
     this.discogsIdInput = page.getByLabel('Discogs ID')
